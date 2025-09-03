@@ -130,3 +130,138 @@ The system is designed with a modular and extensible architecture, incorporating
 *   **Citations**: Passages are always cited with doc_id + page/section.
 
 ---
+
+## C4 Model Diagrams
+
+This section will contain C4 model diagrams (Context, Container, Component, Code) to provide a more detailed architectural view.
+
+### Context Diagram
+
+```mermaid
+C4Context
+    title System Context Diagram for Agentic AI RAG
+
+    Person(user, "User", "Interacts with the Agentic AI RAG system")
+
+    System(agenticRAG, "Agentic AI RAG", "A trustworthy, production-grade Agentic RAG that unifies Vector DB, Graph DB, NL->SQL, and NL->Charts/Insights.")
+
+    System_Ext(llmProviders, "LLM Providers", "External services providing Large Language Models (e.g., OpenAI, Anthropic, HuggingFace)")
+    System_Ext(externalDBs, "External Databases", "Various external databases (e.g., enterprise data warehouses, CRMs)")
+    System_Ext(externalAPIs, "External APIs", "Third-party APIs")
+
+    Rel(user, agenticRAG, "Uses")
+    Rel(agenticRAG, llmProviders, "Invokes for inference")
+    Rel(agenticRAG, externalDBs, "Queries / integrates with")
+    Rel(agenticRAG, externalAPIs, "Consumes data from")
+```
+
+### Container Diagram
+
+```mermaid
+C4Container
+    title Container Diagram for Agentic AI RAG
+    
+    Person(user, "User", "Interacts with the Agentic AI RAG system")
+
+    System_Ext(llm_providers, "LLM Providers", "External services providing Large Language Models")
+
+    System_Boundary(agentic_rag_system, "Agentic AI RAG") {
+        Container(web_ui, "Web UI", "React/Next.js", "Provides the user interface for interaction")
+        Container(api_gateway, "API Gateway", "FastAPI", "Exposes RESTful APIs for the Web UI and other clients")
+        Container(agent_orchestrator, "Agent Orchestrator", "Python, LangGraph", "Manages the agentic loop, tool selection, and execution")
+        Container(vector_db, "Vector Database", "Qdrant/Milvus/Weaviate", "Stores and retrieves vector embeddings for RAG")
+        Container(graph_db, "Graph Database", "JanusGraph/Neo4j/ArangoDB", "Stores and queries knowledge graph data")
+        Container(sql_db, "SQL Database", "PostgreSQL/DuckDB", "Stores structured data and metadata")
+        Container(object_store, "Object Store", "MinIO", "Stores raw documents, parsed content, and model artifacts")
+        Container(cache, "Cache", "Redis", "Provides fast access to frequently used data and conversation memory")
+        Container(etl_parser, "ETL/Parser Service", "Python, Docling/Apache Tika", "Processes and extracts information from various document formats")
+        Container(ocr_service, "OCR Service", "Python, Tesseract", "Performs Optical Character Recognition on image-based documents")
+        Container(chart_generator, "Chart Generator", "Python, Vega-Lite/Plotly", "Generates data visualizations and insights")
+        Container(mcp_servers, "MCP Servers", "Python", "Provides controlled access to external systems (filesystem, Postgres, HTTP, shell)")
+        Container(observability, "Observability Stack", "Prometheus, Grafana, OpenSearch", "Monitors system health, logs, and metrics")
+    }
+
+    Rel(user, web_ui, "Uses")
+    Rel(web_ui, api_gateway, "Makes API calls to")
+    Rel(api_gateway, agent_orchestrator, "Invokes")
+    
+    Rel(agent_orchestrator, vector_db, "Queries")
+    Rel(agent_orchestrator, graph_db, "Queries")
+    Rel(agent_orchestrator, sql_db, "Queries")
+    Rel(agent_orchestrator, object_store, "Stores/Retrieves from")
+    Rel(agent_orchestrator, cache, "Accesses")
+    Rel(agent_orchestrator, etl_parser, "Invokes")
+    Rel(agent_orchestrator, ocr_service, "Invokes")
+    Rel(agent_orchestrator, chart_generator, "Invokes")
+    Rel(agent_orchestrator, mcp_servers, "Communicates with")
+    Rel(agent_orchestrator, llm_providers, "Invokes for inference")
+    
+    Rel(etl_parser, object_store, "Stores parsed content in")
+    Rel(ocr_service, object_store, "Stores OCR results in")
+    Rel(chart_generator, object_store, "Stores charts in")
+    
+    Rel(mcp_servers, sql_db, "Queries")
+    Rel(mcp_servers, object_store, "Accesses")
+   
+```
+
+### Component Diagram
+
+```mermaid
+C4Component
+    title Component Diagram for Agent Orchestrator
+
+    Container(agent_orchestrator, "Agent Orchestrator", "Python, LangGraph", "Manages the agentic loop, tool selection, and execution")
+
+    System_Ext(vector_db, "Vector Database", "Qdrant/Milvus/Weaviate")
+    System_Ext(graph_db, "Graph Database", "JanusGraph/Neo4j/ArangoDB")
+    System_Ext(sql_db, "SQL Database", "PostgreSQL/DuckDB")
+    System_Ext(llm_providers, "LLM Providers", "External services providing Large Language Models")
+    System_Ext(chart_generator_service, "Chart Generator Service", "External Service")
+    System_Ext(mcp_servers, "MCP Servers", "External Services")
+    System_Ext(cache, "Cache", "Redis")  
+
+    System_Boundary(agent_orchestrator_components, "Agent Orchestrator") {
+        Component(router, "Router", "LangGraph Node", "Determines the next step/tool based on user query and context")
+        Component(retriever, "Semantic Retriever", "LangGraph Node", "Queries Vector DB for relevant passages")
+        Component(graph_reasoner, "Graph Reasoner", "LangGraph Node", "Queries Graph DB for relational facts")
+        Component(sql_engine_adapter, "SQL Engine Adapter", "LangGraph Node", "Translates NL to SQL and executes queries")
+        Component(chart_generator_adapter, "Chart Generator Adapter", "LangGraph Node", "Invokes Chart Generator service")
+        Component(mcp_client, "MCP Client", "Python Library", "Communicates with various MCP Servers")
+        Component(response_synthesizer, "Response Synthesizer", "LangGraph Node", "Combines information from various sources into a coherent response")
+        Component(safety_guardrails, "Safety Guardrails", "Python Library", "Applies safety policies and validates responses")
+        Component(memory_manager, "Memory Manager", "Python Library", "Manages short-term conversation and long-term artifacts")
+    }
+
+    Rel(router, retriever, "Routes to")
+    Rel(router, graph_reasoner, "Routes to")
+    Rel(router, sql_engine_adapter, "Routes to")
+    Rel(router, chart_generator_adapter, "Routes to")
+    Rel(router, mcp_client, "Routes to")
+
+    Rel(retriever, vector_db, "Queries")
+    Rel(graph_reasoner, graph_db, "Queries")
+    Rel(sql_engine_adapter, sql_db, "Executes queries on")
+    Rel(chart_generator_adapter, chart_generator_service, "Invokes")
+    Rel(mcp_client, mcp_servers, "Communicates with")
+
+    Rel(router, llm_providers, "Uses for decision making")
+    Rel(retriever, llm_providers, "Uses for query expansion/re-ranking")
+    Rel(graph_reasoner, llm_providers, "Uses for graph query generation")
+    Rel(sql_engine_adapter, llm_providers, "Uses for NL to SQL translation")
+    Rel(chart_generator_adapter, llm_providers, "Uses for chart spec generation")
+    Rel(response_synthesizer, llm_providers, "Uses for final response generation")
+    Rel(safety_guardrails, llm_providers, "Uses for content moderation")
+
+    Rel(response_synthesizer, retriever, "Receives data from")
+    Rel(response_synthesizer, graph_reasoner, "Receives data from")
+    Rel(response_synthesizer, sql_engine_adapter, "Receives data from")
+    Rel(response_synthesizer, chart_generator_adapter, "Receives data from")
+    Rel(response_synthesizer, mcp_client, "Receives data from")
+
+    Rel(memory_manager, sql_db, "Stores long-term memory in")
+    Rel(memory_manager, cache, "Stores short-term memory in")
+```
+
+
+---
